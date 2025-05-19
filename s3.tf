@@ -1,6 +1,6 @@
 # Define the S3 bucket resource
 resource "aws_s3_bucket" "test_bucket" {
-  bucket = "sdds-test-bucket-cicd"  # Ensure the bucket name is globally unique
+  bucket = "sdds-test-bucket-cicd-eu-west-2"  # Ensure the bucket name is globally unique
 
   # Optional: Enable versioning on the S3 bucket
   versioning {
