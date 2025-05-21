@@ -193,3 +193,151 @@ Comment
 
 You should see apply kick off
 
+
+### Multi account setup
+To use **Atlantis on an EC2 instance in one AWS account** to deploy Terraform-managed infrastructure to a **separate AWS account**, you need to configure **cross-account IAM access**. This is a common pattern for centralized CI/CD pipelines.
+
+---
+
+## ✅ Overview of the Approach
+
+Atlantis must assume a **role in the target AWS account** using AWS STS. The process typically works like this:
+
+1. Atlantis runs in **Account A** (on EC2)
+2. Terraform deploys infrastructure in **Account B**
+3. Atlantis uses an **IAM role in Account B** via `assume_role` in Terraform or AWS CLI
+
+---
+
+## 🔐 Prerequisites
+
+* Atlantis is set up and running in EC2 (Account A)
+* You have **IAM permissions** to create roles in both Account A and B
+* Terraform is using an AWS provider block that allows assuming roles
+
+---
+
+## 🧱 Step-by-Step Guide
+
+### ### 1. 🛡 Create IAM Role in **Target Account (Account B)**
+
+This role is what Terraform (via Atlantis) will assume.
+
+**In Account B:**
+
+Create an IAM role named (e.g.) `AtlantisDeployRole` with:
+
+* **Trust policy** allowing Atlantis’s EC2 instance role from Account A to assume it.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::<ACCOUNT_A_ID>:role/AtlantisEC2Role"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+```
+
+* **Permissions policy** granting access to resources in Account B (e.g., S3, VPC, etc.)
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "*",
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+> 🔐 Scope this down to only what’s needed.
+
+---
+
+### 2. 🤖 Add `assume_role` block to Terraform AWS Provider
+
+In your **Terraform code** (used by Atlantis):
+
+```hcl
+provider "aws" {
+  region  = "us-west-2"
+  assume_role {
+    role_arn = "arn:aws:iam::<ACCOUNT_B_ID>:role/AtlantisDeployRole"
+  }
+}
+```
+
+This tells Terraform to use the **default credentials** from the EC2 instance (Account A), but then **assume the target role** in Account B.
+
+---
+
+### 3. ✅ Ensure Atlantis EC2 IAM Role (Account A) Has AssumeRole Permission
+
+In Account A, attach a policy to the EC2 instance profile (Atlantis EC2 role):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": "sts:AssumeRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_B_ID>:role/AtlantisDeployRole"
+    }
+  ]
+}
+```
+
+---
+
+### 4. 🔄 Restart or Reload Atlantis (if you changed the EC2 role)
+
+```bash
+sudo systemctl restart docker
+docker restart atlantis
+```
+
+Or however you're managing the container.
+
+---
+
+## ✅ Verification
+
+1. Open a PR in GitHub with Terraform that targets Account B.
+2. Check the Atlantis output in the PR and verify:
+
+   * It assumes the correct role
+   * It deploys resources in the correct account
+3. Run:
+
+```bash
+aws sts get-caller-identity
+```
+
+Inside the Atlantis container if you need to verify current credentials.
+
+---
+
+## 📦 Optional: Use Terraform Workspaces or Separate Projects
+
+If you're deploying to multiple accounts, structure your repo to have:
+
+```bash
+/prod       --> Account B
+/staging    --> Account C
+```
+
+Then configure Atlantis `atlantis.yaml` to run in those directories with different provider blocks.
+
+---
+
+
