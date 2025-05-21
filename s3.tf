@@ -1,24 +1,33 @@
-# # Define the S3 bucket resource
-# resource "aws_s3_bucket" "test_bucket" {
-#   bucket = "sdds-test-bucket-cicd-west-2"  # Ensure the bucket name is globally unique
+resource "random_id" "suffix" {
+  byte_length = 4
+}
 
-#   # Optional: Enable versioning on the S3 bucket
-#   versioning {
-#     enabled = true
-#   }
+resource "aws_s3_bucket" "main" {
+  bucket = "my-secure-bucket-${random_id.suffix.hex}"
+  force_destroy = false  # set to true only if you want to allow auto-deletion of objects
+  tags = {
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
 
-#   # Optional: Define tags for the S3 bucket
-#   tags = {
-#     Name        = "test-bucket"
-#     Environment = "Development"
-#   }
-# }
+  lifecycle {
+    prevent_destroy = true  # Adds protection against accidental deletion
+  }
+}
 
-# resource "aws_s3_bucket_public_access_block" "app" {
-#   bucket = aws_s3_bucket.test_bucket.id
+resource "aws_s3_bucket_versioning" "main" {
+  bucket = aws_s3_bucket.main.id
 
-#   block_public_acls       = true
-#   block_public_policy     = true
-#   ignore_public_acls      = true
-#   restrict_public_buckets = true
-# }
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "main" {
+  bucket = aws_s3_bucket.main.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
