@@ -19,8 +19,8 @@ resource "aws_s3_bucket" "test_bucket" {
  
 
 # Define the S3 bucket resource
-resource "aws_s3_bucket" "test_bucket2" {
-    bucket = "sdds-test-bucket-2-cicd-west-2"   ##Ensure the bucket name is globally unique
+resource "aws_s3_bucket" "test_bucket3" {
+    bucket = "sdds-test-bucket-3-cicd-west-2"   ##Ensure the bucket name is globally unique
 
 # Optional: Enable versioning on the S3 bucket
   versioning {
@@ -44,7 +44,7 @@ resource "aws_s3_bucket_public_access_block" "app" {
   restrict_public_buckets = true
 }
 
-resource "aws_s3_bucket_public_access_block" "app2" {
+resource "aws_s3_bucket_public_access_block" "app3" {
    bucket = aws_s3_bucket.test_bucket2.id
 
   block_public_acls       = true
