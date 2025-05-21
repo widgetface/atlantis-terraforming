@@ -45,7 +45,7 @@ resource "aws_s3_bucket_public_access_block" "app" {
 }
 
 resource "aws_s3_bucket_public_access_block" "app3" {
-   bucket = aws_s3_bucket.test_bucket2.id
+   bucket = aws_s3_bucket.test_bucket3.id
 
   block_public_acls       = true
   block_public_policy     = true
